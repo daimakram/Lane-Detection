@@ -8,6 +8,10 @@
 """
 Evaluate lanenet model on tusimple lane dataset
 """
+import sys
+import codecs
+
+sys.path.append('/content/lanenet-lane-detection')
 import argparse
 import glob
 import os
@@ -18,6 +22,10 @@ import cv2
 import numpy as np
 import tensorflow as tf
 import tqdm
+
+import sys
+
+sys.path.append('/content/lanenet-lane-detection')
 
 from lanenet_model import lanenet
 from lanenet_model import lanenet_postprocess
@@ -40,6 +48,7 @@ def init_args():
 
     return parser.parse_args()
 
+import json
 
 def eval_lanenet(src_dir, weights_path, save_dir):
     """
@@ -108,7 +117,45 @@ def eval_lanenet(src_dir, weights_path, save_dir):
             if ops.exists(output_image_path):
                 continue
 
-            cv2.imwrite(output_image_path, postprocess_result['source_image'])
+            # h_path = ops.join(save_dir , "/homography")
+            # os.makedirs(h_path, exist_ok=True)
+            # h_dir = ops.join(h_path, input_image_dir)
+            # os.makedirs(h_dir, exist_ok=True)
+            # h_dir = ops.join(h_dir, input_image_name)
+            # if ops.exists(h_dir):
+            #     continue
+            # print("dir is ", h_dir)
+            height, width, channels = image_vis.shape
+            # imh= cv2.warpPerspective(postprocess_result['source_image'], postprocess_result['homography'], (width, height))
+            imh= cv2.warpPerspective(image_vis, postprocess_result['homography'], (width, height))
+            h_path = "/content/hm/" + input_image_name
+            print("passing this ", h_path)
+            cv2.imwrite(h_path, imh)         
+
+            for i in postprocess_result['fp']:
+              cnt = (int(i[0]), int(i[1]))
+              image_vis = cv2.circle(image_vis, cnt, 5, (255,50,255), -1)
+
+            for i in postprocess_result['rp']:
+              cnt = (int(i[0]), int(i[1]))
+              image_vis = cv2.circle(image_vis, cnt, 5, (50,255,255), -1)
+            
+            h_path = "/content/cm/" + input_image_name
+            print("passing this ", h_path)
+            cv2.imwrite(h_path, image_vis)
+            
+            #print("here ", postprocess_result['vanishing_point'])
+            cv2.imwrite(output_image_path, imh)
+            temp_dict = {output_image_path: list(postprocess_result['vanishing_point'])}
+            with open("/content/output/result.json", "w") as i :
+              #print("here---------------")
+              #json.dump(list(temp_dict), i)
+              file_path=output_image_path[:len(output_image_path)-4]+'.json'
+              #print(file_path)
+              #print(list(temp_dict))
+              #print(temp_dict)
+              json.dump(temp_dict, codecs.open(file_path, 'w', encoding='utf-8'),  separators=(',', ':'), sort_keys=True, indent=4)
+            i.close()
 
     return
 
